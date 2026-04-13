@@ -1,33 +1,9 @@
-// Task Controller
-// Handles task operations like create, read, update, delete
+const mongoose = require('mongoose');
+const Task = require('../models/Task');
 
-/**
- * Get all tasks
- * GET /api/tasks
- */
 const getAllTasks = async (req, res) => {
   try {
-    // TODO: Fetch all tasks from MongoDB
-    // const tasks = await Task.find();
-
-    const tasks = [
-      {
-        id: '1',
-        title: 'Complete Project',
-        description: 'Finish the project setup',
-        status: 'pending',
-        priority: 'high',
-        userId: 1,
-      },
-      {
-        id: '2',
-        title: 'Review Code',
-        description: 'Review team code',
-        status: 'in_progress',
-        priority: 'medium',
-        userId: 1,
-      },
-    ];
+    const tasks = await Task.find({ userId: req.user.userId });
 
     res.status(200).json({
       success: true,
@@ -35,6 +11,7 @@ const getAllTasks = async (req, res) => {
       data: tasks,
     });
   } catch (error) {
+    console.error('Get tasks error:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to retrieve tasks',
@@ -43,25 +20,21 @@ const getAllTasks = async (req, res) => {
   }
 };
 
-/**
- * Get task by ID
- * GET /api/tasks/:id
- */
 const getTaskById = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // TODO: Fetch task from MongoDB
-    // const task = await Task.findById(id);
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid task ID',
+      });
+    }
 
-    const task = {
-      id,
-      title: 'Sample Task',
-      description: 'This is a sample task',
-      status: 'pending',
-      priority: 'medium',
-      userId: 1,
-    };
+    const task = await Task.findOne({
+      _id: id,
+      userId: req.user.userId,
+    });
 
     if (!task) {
       return res.status(404).json({
@@ -76,6 +49,7 @@ const getTaskById = async (req, res) => {
       data: task,
     });
   } catch (error) {
+    console.error('Get task by ID error:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to retrieve task',
@@ -84,42 +58,32 @@ const getTaskById = async (req, res) => {
   }
 };
 
-/**
- * Create a new task
- * POST /api/tasks
- */
 const createTask = async (req, res) => {
   try {
-    const { title, description, priority, status } = req.body;
-    const userId = req.user?.userId || 1; // Get from JWT token
+    const { title, description, status, dueDate } = req.body;
 
-    // TODO: Create task in MongoDB
-    // const newTask = new Task({
-    //   title,
-    //   description,
-    //   priority,
-    //   status,
-    //   userId,
-    //   createdAt: new Date(),
-    // });
-    // await newTask.save();
+    if (!title) {
+      return res.status(400).json({
+        success: false,
+        message: 'Title is required',
+      });
+    }
 
-    const newTask = {
-      id: 'new_id',
+    const task = await Task.create({
       title,
       description,
-      priority,
-      status,
-      userId,
-      createdAt: new Date(),
-    };
+      status: status || 'pending',
+      dueDate,
+      userId: req.user.userId,
+    });
 
     res.status(201).json({
       success: true,
       message: 'Task created successfully',
-      data: newTask,
+      data: task,
     });
   } catch (error) {
+    console.error('Create task error:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to create task',
@@ -128,30 +92,29 @@ const createTask = async (req, res) => {
   }
 };
 
-/**
- * Update task
- * PUT /api/tasks/:id
- */
 const updateTask = async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, description, status, priority } = req.body;
 
-    // TODO: Update task in MongoDB
-    // const updatedTask = await Task.findByIdAndUpdate(
-    //   id,
-    //   { title, description, status, priority, updatedAt: new Date() },
-    //   { new: true }
-    // );
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid task ID',
+      });
+    }
 
-    const updatedTask = {
-      id,
-      title,
-      description,
-      status,
-      priority,
-      updatedAt: new Date(),
-    };
+    const updatedTask = await Task.findOneAndUpdate(
+      { _id: id, userId: req.user.userId },
+      req.body,
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedTask) {
+      return res.status(404).json({
+        success: false,
+        message: 'Task not found',
+      });
+    }
 
     res.status(200).json({
       success: true,
@@ -159,6 +122,7 @@ const updateTask = async (req, res) => {
       data: updatedTask,
     });
   } catch (error) {
+    console.error('Update task error:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to update task',
@@ -167,22 +131,36 @@ const updateTask = async (req, res) => {
   }
 };
 
-/**
- * Delete task
- * DELETE /api/tasks/:id
- */
 const deleteTask = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // TODO: Delete task from MongoDB
-    // await Task.findByIdAndDelete(id);
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid task ID',
+      });
+    }
+
+    const deletedTask = await Task.findOneAndDelete({
+      _id: id,
+      userId: req.user.userId,
+    });
+
+    if (!deletedTask) {
+      return res.status(404).json({
+        success: false,
+        message: 'Task not found',
+      });
+    }
 
     res.status(200).json({
       success: true,
       message: 'Task deleted successfully',
+      data: deletedTask,
     });
   } catch (error) {
+    console.error('Delete task error:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to delete task',

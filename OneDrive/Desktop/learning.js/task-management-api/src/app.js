@@ -1,54 +1,61 @@
-const express = require('express');
-const cors = require('cors');
-const helmet = require('helmet');
-const rateLimit = require('express-rate-limit');
-require('dotenv').config();
+const express = require("express");
+const cors = require("cors");
+const rateLimit = require("express-rate-limit");
 
-const authRoutes = require('./routes/authRoutes');
-const userRoutes = require('./routes/userRoutes');
-const taskRoutes = require('./routes/taskRoutes');
-const { errorHandler, notFoundHandler } = require('./middlewares/errorMiddleware');
+const authRoutes = require("./routes/authRoutes");
+const userRoutes = require("./routes/userRoutes");
+const taskRoutes = require("./routes/taskRoutes");
+const { errorHandler } = require("./middlewares/errorMiddleware");
 
 const app = express();
 
-app.use(helmet());
+// Basic middlewares
+app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-app.use(
-  cors({
-    origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
-    credentials: true,
-  })
-);
-
+// Rate limiter for auth routes
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 5,
-  message: {
-    success: false,
-    message: 'Too many login/register attempts, please try again later',
-  },
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // demo ke liye bada rakha hai
   standardHeaders: true,
   legacyHeaders: false,
+  message: {
+    success: false,
+    message: "Too many login/register attempts, please try again later",
+  },
 });
 
-app.get('/api/health', (req, res) => {
+// Root route
+app.get("/", (req, res) => {
   res.status(200).json({
     success: true,
-    message: 'Server is running',
-    timestamp: new Date().toISOString(),
+    message: "Task Management API is running...",
   });
 });
 
-app.use('/api/auth/login', authLimiter);
-app.use('/api/auth/register', authLimiter);
+// Health check route
+app.get("/health", (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "Server is healthy",
+  });
+});
 
-app.use('/api/auth', authRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/tasks', taskRoutes);
+// API routes
+app.use("/api/auth", authLimiter, authRoutes);
+app.use("/api/users", userRoutes);
+app.use("/api/tasks", taskRoutes);
 
-app.use(notFoundHandler);
+// 404 handler
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    message: "Route not found",
+  });
+});
+
+// Global error handler
 app.use(errorHandler);
 
 module.exports = app;

@@ -1,19 +1,19 @@
 const { Pool } = require('pg');
 
-const connectPostgres = () => {
-  if (!process.env.DB_PASSWORD) {
-    throw new Error('DB_PASSWORD is required');
-  }
+const pool = new Pool({
+  host: process.env.PG_HOST,
+  port: process.env.PG_PORT,
+  user: process.env.PG_USER,
+  password: process.env.PG_PASSWORD,
+  database: process.env.PG_DATABASE,
+});
 
-  const pool = new Pool({
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    host: process.env.DB_HOST,
-    port: process.env.DB_PORT,
-    database: process.env.DB_NAME,
+pool.connect()
+  .then(() => {
+    console.log('PostgreSQL connected successfully');
+  })
+  .catch((err) => {
+    console.error('PostgreSQL connection error:', err.message);
   });
 
-  return pool;
-};
-
-module.exports = connectPostgres;
+module.exports = pool;
